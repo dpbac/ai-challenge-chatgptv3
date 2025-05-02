@@ -5,6 +5,7 @@ from scoring import adjust_scores, normalize_scores
 
 st.set_page_config(page_title="AI Quest Quiz", layout="centered")
 
+# Initialize session state
 if 'step' not in st.session_state:
     st.session_state.step = 0
 if 'likert_answers' not in st.session_state:
@@ -21,15 +22,24 @@ if 'ambition' not in st.session_state:
     st.session_state.ambition = ""
 if 'final_scores' not in st.session_state:
     st.session_state.final_scores = {}
+if 'selected_topic' not in st.session_state:
+    st.session_state.selected_topic = None
 
 def advance_step():
     st.session_state.step += 1
+    st.rerun()
+
+def reset_app():
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
 
 # Step 0: Welcome
 if st.session_state.step == 0:
     st.title("🎓 AI Interest & Motivation Quiz")
     st.write("Discover which AI topics align best with your interests and experiences.")
-    st.button("Start →", on_click=advance_step)
+    if st.button("Start →", key="start_button"):
+        advance_step()
 
 # Step 1: Select multiple exploration themes
 elif st.session_state.step == 1:
@@ -39,9 +49,11 @@ elif st.session_state.step == 1:
             theme for theme in THEME_DESCRIPTIONS.keys()
             if st.checkbox(theme, key=f"explored_{theme}")
         ]
-        submitted = st.form_submit_button("Next →")
-        if submitted and st.session_state.explored_themes:
-            st.session_state.step += 1
+        if st.form_submit_button("Next →", use_container_width=True):
+            if st.session_state.explored_themes:
+                advance_step()
+            else:
+                st.warning("Please select at least one theme to continue.")
 
 # Step 2: Per-theme reuse preferences in a form
 elif st.session_state.step == 2:
@@ -51,9 +63,8 @@ elif st.session_state.step == 2:
             st.session_state.reuse_preferences[theme] = st.radio(
                 f"{theme}", ["Yes", "No"], key=f"reuse_{theme}"
             )
-        submitted = st.form_submit_button("Next →")
-        if submitted:
-            st.session_state.step += 1
+        if st.form_submit_button("Next →", use_container_width=True):
+            advance_step()
 
 # Step 3: Likert-style motivation quiz inside a form
 elif st.session_state.step == 3:
@@ -66,9 +77,8 @@ elif st.session_state.step == 3:
                 value=st.session_state.likert_answers[i],
                 key=f"likert_{i}"
             )
-        submitted = st.form_submit_button("Next →")
-        if submitted:
-            st.session_state.step += 1
+        if st.form_submit_button("Next →", use_container_width=True):
+            advance_step()
 
 # Step 4: About you
 elif st.session_state.step == 4:
@@ -88,9 +98,8 @@ elif st.session_state.step == 4:
         ]
         st.session_state.confidence = st.radio("How confident are you with AI tools?", ["Low", "Medium", "High"])
         st.session_state.ambition = st.radio("What level of challenge are you looking for?", ["Light exploration", "Moderate challenge", "Portfolio-level deep dive"])
-        submitted = st.form_submit_button("Show My Results →")
-        if submitted:
-            st.session_state.step += 1
+        if st.form_submit_button("Show My Results →", use_container_width=True):
+            advance_step()
 
 # Step 5: Results
 elif st.session_state.step == 5:
@@ -116,8 +125,8 @@ elif st.session_state.step == 5:
     selected_topic = st.radio("Which one would you like to work on?", [t[0] for t in top3])
     st.session_state.selected_topic = selected_topic
 
-    if st.button("Generate My Prompt →"):
-        st.session_state.step += 1
+    if st.button("Generate My Prompt →", key="generate_prompt", use_container_width=True):
+        advance_step()
 
 # Step 6: Final prompt
 elif st.session_state.step == 6:
@@ -138,7 +147,5 @@ elif st.session_state.step == 6:
     st.code(prompt, language="markdown")
     st.markdown("[Open in ChatGPT](https://chat.openai.com)", unsafe_allow_html=True)
 
-    if st.button("🔁 Restart"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+    if st.button("🔁 Restart", key="restart_button", use_container_width=True):
+        reset_app()
